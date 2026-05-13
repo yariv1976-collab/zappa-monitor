@@ -331,7 +331,12 @@ const TELEGRAM_TOKEN = '8918456718:AAEz9tgiKmSwrxHos_on1_rxB52S6WieSb4';
 const TELEGRAM_CHAT_ID = '5661973010';
 const TICKET_URL = 'https://www.zappa-club.co.il/event/%D7%91%D7%A8%D7%99-%D7%A1%D7%97%D7%A8%D7%95%D7%A3-%D7%96%D7%90%D7%A4%D7%94-%D7%90%D7%9E%D7%A4%D7%99-%D7%A9%D7%95%D7%A0%D7%99-21353767/';
 const INTERVAL = 120; // seconds
-const PROXY = 'https://api.allorigins.win/get?url=';
+const PROXIES = [
+  'https://corsproxy.io/?',
+  'https://api.allorigins.win/get?url=',
+  'https://api.codetabs.com/v1/proxy?quest='
+];
+let proxyIndex = 0;
 
 let monitoring = false;
 let timer = null;
@@ -401,9 +406,24 @@ async function checkTickets() {
   addLog('בודק זמינות כרטיסים...');
 
   try {
-    const res = await fetch(PROXY + encodeURIComponent(TICKET_URL));
-    const data = await res.json();
-    const html = data.contents;
+    let html = null;
+    for (let i = 0; i < PROXIES.length; i++) {
+      try {
+        const proxy = PROXIES[(proxyIndex + i) % PROXIES.length];
+        const res = await fetch(proxy + encodeURIComponent(TICKET_URL));
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const ct = res.headers.get('content-type') || '';
+        if (ct.includes('application/json')) {
+          const data = await res.json();
+          html = data.contents || data.body || '';
+        } else {
+          html = await res.text();
+        }
+        proxyIndex = (proxyIndex + i) % PROXIES.length;
+        break;
+      } catch(e) { /* try next proxy */ }
+    }
+    if (!html) throw new Error('כל הפרוקסים נכשלו');
 
     // Look for ticket availability changes
     // Check for common "available" indicators vs "לא זמין"
