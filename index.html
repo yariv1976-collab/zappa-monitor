@@ -425,35 +425,31 @@ async function checkTickets() {
     }
     if (!html) throw new Error('כל הפרוקסים נכשלו');
 
-    // Look for ticket availability changes
-    // Check for common "available" indicators vs "לא זמין"
+    // Count "לא מסומן" occurrences - this is the "unavailable" state visible in the page
+    const notSelectedCount = (html.match(/לא מסומן/g) || []).length;
     const notAvailableCount = (html.match(/לא זמין/g) || []).length;
     const soldOutCount = (html.match(/אזל|sold.?out|נגמר/gi) || []).length;
-    
-    // Look for price/buy buttons appearing
+
+    // Look for active buy button - when tickets available the cart button becomes enabled
+    const cartDisabled = (html.match(/disabled/gi) || []).length;
     const hasAddToCart = html.includes('add-to-cart') || html.includes('הוסף לסל') || html.includes('קנה כרטיס');
-    const hasBuyNow = html.includes('buy-now') || html.includes('קנייה') || html.includes('לרכישה');
-    
-    // Try to detect seat availability text
-    const availableMatch = html.match(/זמין|available|כרטיסים?\s+זמינ/gi);
-    
+
     // Build a status fingerprint
-    const currentStatus = `${notAvailableCount}-${soldOutCount}-${hasAddToCart}-${hasBuyNow}-${availableMatch ? availableMatch.length : 0}`;
+    const currentStatus = `${notSelectedCount}-${notAvailableCount}-${soldOutCount}-${cartDisabled}-${hasAddToCart}`;
 
     console.log('Status:', currentStatus, 'Previous:', lastStatus);
-    console.log('notAvailable:', notAvailableCount, 'soldOut:', soldOutCount, 'addToCart:', hasAddToCart, 'buyNow:', hasBuyNow);
+    console.log('notSelected:', notSelectedCount, 'notAvailable:', notAvailableCount, 'cartDisabled:', cartDisabled);
 
     if (lastStatus === null) {
-      // First check - save baseline
       lastStatus = currentStatus;
-      addLog(`מצב התחלתי נשמר (${notAvailableCount} "לא זמין")`);
+      addLog(`מצב התחלתי נשמר ("לא מסומן" × ${notSelectedCount})`);
     } else if (currentStatus !== lastStatus) {
       // Something changed!
       lastStatus = currentStatus;
       ticketsFound();
       return;
     } else {
-      addLog(`אין שינוי (${notAvailableCount} "לא זמין")`);
+      addLog(`אין שינוי ("לא מסומן" × ${notSelectedCount})`);
     }
   } catch (err) {
     console.error(err);
