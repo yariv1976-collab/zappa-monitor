@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎟️ מוניטור כרטיסים - זאפה</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;700;900&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --card: #13131a;
+    --border: #2a2a3a;
+    --accent: #f5a623;
+    --accent2: #e74c3c;
+    --green: #2ecc71;
+    --text: #e8e8f0;
+    --muted: #6b6b80;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Heebo', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(ellipse at 20% 20%, rgba(245,166,35,0.06) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 80%, rgba(231,76,60,0.05) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  .header .emoji { font-size: 48px; margin-bottom: 8px; }
+
+  h1 {
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: -0.5px;
+    color: var(--accent);
+  }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 14px;
+    margin-top: 4px;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    width: 100%;
+    max-width: 480px;
+    margin-bottom: 16px;
+  }
+
+  .status-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--muted);
+    flex-shrink: 0;
+  }
+  .dot.active {
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s infinite;
+  }
+  .dot.error { background: var(--accent2); }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .status-text {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .status-sub {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .countdown {
+    text-align: center;
+    margin: 20px 0;
+  }
+
+  .countdown-num {
+    font-size: 56px;
+    font-weight: 900;
+    color: var(--accent);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .countdown-label {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  .checks-title {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .log {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .log-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    padding: 8px 12px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 8px;
+    border: 1px solid transparent;
+  }
+  .log-item.found {
+    border-color: var(--green);
+    background: rgba(46,204,113,0.08);
+    color: var(--green);
+    font-weight: 700;
+  }
+  .log-item.checking { color: var(--muted); }
+
+  .log-time {
+    font-size: 11px;
+    color: var(--muted);
+    margin-right: auto;
+    direction: ltr;
+  }
+
+  .btn {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 12px;
+    font-family: 'Heebo', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-start {
+    background: var(--accent);
+    color: #000;
+  }
+  .btn-start:hover { opacity: 0.9; transform: translateY(-1px); }
+
+  .btn-stop {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    margin-top: 8px;
+    font-size: 14px;
+  }
+  .btn-stop:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  .alert-box {
+    background: rgba(46,204,113,0.12);
+    border: 2px solid var(--green);
+    border-radius: 16px;
+    padding: 24px;
+    text-align: center;
+    display: none;
+    width: 100%;
+    max-width: 480px;
+    margin-bottom: 16px;
+    animation: appear 0.4s ease;
+  }
+
+  @keyframes appear {
+    from { transform: scale(0.9); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .alert-box h2 {
+    color: var(--green);
+    font-size: 24px;
+    margin-bottom: 8px;
+  }
+
+  .alert-box p {
+    color: var(--text);
+    font-size: 14px;
+    margin-bottom: 16px;
+  }
+
+  .alert-box a {
+    display: inline-block;
+    background: var(--green);
+    color: #000;
+    padding: 12px 24px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 15px;
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  .stat {
+    background: rgba(255,255,255,0.03);
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+  }
+  .stat-num {
+    font-size: 24px;
+    font-weight: 900;
+    color: var(--accent);
+  }
+  .stat-label {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .note {
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+    max-width: 380px;
+    line-height: 1.6;
+  }
+
+  .note a { color: var(--accent); }
+
+  audio { display: none; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="emoji">🎸</div>
+  <h1>מוניטור כרטיסים</h1>
+  <div class="subtitle">בארי סחרוף • זאפה אמפי שוני</div>
+</div>
+
+<div class="alert-box" id="alertBox">
+  <h2>🎟️ יש כרטיסים!</h2>
+  <p>זוהה שינוי בזמינות הכרטיסים! מהר, לפני שייגמרו!</p>
+  <a href="https://www.zappa-club.co.il/event/%D7%91%D7%A8%D7%99-%D7%A1%D7%97%D7%A8%D7%95%D7%A3-%D7%96%D7%90%D7%A4%D7%94-%D7%90%D7%9E%D7%A4%D7%99-%D7%A9%D7%95%D7%A0%D7%99-21353767/" target="_blank">קנה כרטיס עכשיו! 🔥</a>
+</div>
+
+<div class="card" id="mainCard">
+  <div class="status-row">
+    <div class="dot" id="statusDot"></div>
+    <div>
+      <div class="status-text" id="statusText">מוכן להתחיל</div>
+      <div class="status-sub" id="statusSub">לחץ התחל לניטור</div>
+    </div>
+  </div>
+
+  <div class="countdown" id="countdownSection" style="display:none">
+    <div class="countdown-num" id="countdownNum">120</div>
+    <div class="countdown-label">שניות לבדיקה הבאה</div>
+  </div>
+
+  <div class="stats" id="statsSection" style="display:none">
+    <div class="stat">
+      <div class="stat-num" id="checkCount">0</div>
+      <div class="stat-label">בדיקות</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" id="runTime">0</div>
+      <div class="stat-label">דקות פעיל</div>
+    </div>
+  </div>
+
+  <button class="btn btn-start" id="startBtn" onclick="startMonitor()">התחל ניטור</button>
+  <button class="btn btn-stop" id="stopBtn" onclick="stopMonitor()" style="display:none">עצור ניטור</button>
+</div>
+
+<div class="card" id="logCard" style="display:none">
+  <div class="checks-title">יומן בדיקות</div>
+  <div class="log" id="log"></div>
+</div>
+
+<p class="note">
+  ⚠️ השאר דף זה פתוח ופעיל.<br>
+  כשיימצאו כרטיסים תקבל הודעה בטלגרם + התראה קולית.
+</p>
+
+<script>
+const TELEGRAM_TOKEN = '8918456718:AAEz9tgiKmSwrxHos_on1_rxB52S6WieSb4';
+const TELEGRAM_CHAT_ID = '5661973010';
+const TICKET_URL = 'https://www.zappa-club.co.il/event/%D7%91%D7%A8%D7%99-%D7%A1%D7%97%D7%A8%D7%95%D7%A3-%D7%96%D7%90%D7%A4%D7%94-%D7%90%D7%9E%D7%A4%D7%99-%D7%A9%D7%95%D7%A0%D7%99-21353767/';
+const INTERVAL = 120; // seconds
+const PROXY = 'https://api.allorigins.win/get?url=';
+
+let monitoring = false;
+let timer = null;
+let countdownTimer = null;
+let checkCount = 0;
+let startTime = null;
+let countdown = INTERVAL;
+let lastStatus = null;
+
+function startMonitor() {
+  monitoring = true;
+  startTime = Date.now();
+  document.getElementById('startBtn').style.display = 'none';
+  document.getElementById('stopBtn').style.display = 'block';
+  document.getElementById('countdownSection').style.display = 'block';
+  document.getElementById('statsSection').style.display = 'grid';
+  document.getElementById('logCard').style.display = 'block';
+  document.getElementById('statusDot').className = 'dot active';
+  document.getElementById('statusText').textContent = 'מנטר...';
+  document.getElementById('statusSub').textContent = 'בודק כל 2 דקות';
+
+  checkTickets();
+  startCountdown();
+}
+
+function stopMonitor() {
+  monitoring = false;
+  clearTimeout(timer);
+  clearInterval(countdownTimer);
+  document.getElementById('startBtn').style.display = 'block';
+  document.getElementById('stopBtn').style.display = 'none';
+  document.getElementById('statusDot').className = 'dot';
+  document.getElementById('statusText').textContent = 'עצור';
+  document.getElementById('statusSub').textContent = 'לחץ התחל להמשיך';
+}
+
+function startCountdown() {
+  countdown = INTERVAL;
+  clearInterval(countdownTimer);
+  countdownTimer = setInterval(() => {
+    countdown--;
+    document.getElementById('countdownNum').textContent = countdown;
+    const elapsed = Math.floor((Date.now() - startTime) / 60000);
+    document.getElementById('runTime').textContent = elapsed;
+    if (countdown <= 0) {
+      clearInterval(countdownTimer);
+    }
+  }, 1000);
+}
+
+function addLog(msg, type = 'checking') {
+  const log = document.getElementById('log');
+  const time = new Date().toLocaleTimeString('he-IL');
+  const item = document.createElement('div');
+  item.className = `log-item ${type}`;
+  item.innerHTML = `<span>${type === 'found' ? '🎟️' : '🔍'}</span><span>${msg}</span><span class="log-time">${time}</span>`;
+  log.insertBefore(item, log.firstChild);
+  // Keep only last 20
+  while (log.children.length > 20) log.removeChild(log.lastChild);
+}
+
+async function checkTickets() {
+  if (!monitoring) return;
+
+  checkCount++;
+  document.getElementById('checkCount').textContent = checkCount;
+  addLog('בודק זמינות כרטיסים...');
+
+  try {
+    const res = await fetch(PROXY + encodeURIComponent(TICKET_URL));
+    const data = await res.json();
+    const html = data.contents;
+
+    // Look for ticket availability changes
+    // Check for common "available" indicators vs "לא זמין"
+    const notAvailableCount = (html.match(/לא זמין/g) || []).length;
+    const soldOutCount = (html.match(/אזל|sold.?out|נגמר/gi) || []).length;
+    
+    // Look for price/buy buttons appearing
+    const hasAddToCart = html.includes('add-to-cart') || html.includes('הוסף לסל') || html.includes('קנה כרטיס');
+    const hasBuyNow = html.includes('buy-now') || html.includes('קנייה') || html.includes('לרכישה');
+    
+    // Try to detect seat availability text
+    const availableMatch = html.match(/זמין|available|כרטיסים?\s+זמינ/gi);
+    
+    // Build a status fingerprint
+    const currentStatus = `${notAvailableCount}-${soldOutCount}-${hasAddToCart}-${hasBuyNow}-${availableMatch ? availableMatch.length : 0}`;
+
+    console.log('Status:', currentStatus, 'Previous:', lastStatus);
+    console.log('notAvailable:', notAvailableCount, 'soldOut:', soldOutCount, 'addToCart:', hasAddToCart, 'buyNow:', hasBuyNow);
+
+    if (lastStatus === null) {
+      // First check - save baseline
+      lastStatus = currentStatus;
+      addLog(`מצב התחלתי נשמר (${notAvailableCount} "לא זמין")`);
+    } else if (currentStatus !== lastStatus) {
+      // Something changed!
+      lastStatus = currentStatus;
+      ticketsFound();
+      return;
+    } else {
+      addLog(`אין שינוי (${notAvailableCount} "לא זמין")`);
+    }
+  } catch (err) {
+    console.error(err);
+    addLog('שגיאה בבדיקה - נסה שוב בעוד 2 דקות', 'checking');
+  }
+
+  if (monitoring) {
+    startCountdown();
+    timer = setTimeout(checkTickets, INTERVAL * 1000);
+  }
+}
+
+function ticketsFound() {
+  // Show alert
+  document.getElementById('alertBox').style.display = 'block';
+  document.getElementById('statusDot').className = 'dot';
+  document.getElementById('statusDot').style.background = '#2ecc71';
+  document.getElementById('statusText').textContent = '🎟️ נמצאו כרטיסים!';
+
+  addLog('זוהה שינוי! ייתכן שיש כרטיסים!', 'found');
+
+  // Play alert sound
+  playAlert();
+
+  // Send Telegram
+  sendTelegram('🎟️ יש כרטיסים לבארי סחרוף בזאפה!\n\nמהר לקנות: https://www.zappa-club.co.il/event/%D7%91%D7%A8%D7%99-%D7%A1%D7%97%D7%A8%D7%95%D7%A3-%D7%96%D7%90%D7%A4%D7%94-%D7%90%D7%9E%D7%A4%D7%99-%D7%A9%D7%95%D7%A0%D7%99-21353767/');
+
+  // Keep checking in case it was a false alarm
+  if (monitoring) {
+    timer = setTimeout(checkTickets, INTERVAL * 1000);
+    startCountdown();
+  }
+}
+
+async function sendTelegram(msg) {
+  try {
+    const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: msg })
+    });
+    console.log('Telegram sent!');
+  } catch (e) {
+    console.error('Telegram error:', e);
+  }
+}
+
+function playAlert() {
+  // Generate beep using Web Audio API
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const playBeep = (freq, start, duration) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.3, ctx.currentTime + start);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + duration);
+      osc.start(ctx.currentTime + start);
+      osc.stop(ctx.currentTime + start + duration);
+    };
+    playBeep(523, 0, 0.2);
+    playBeep(659, 0.25, 0.2);
+    playBeep(784, 0.5, 0.4);
+    playBeep(1047, 1.0, 0.6);
+  } catch(e) {}
+
+  // Also vibrate on mobile
+  if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 400]);
+}
+
+// Test Telegram on load
+async function testTelegram() {
+  await sendTelegram('✅ מוניטור הכרטיסים פעיל!\nאקשר אותך ברגע שיהיו כרטיסים לבארי סחרוף בזאפה 🎸');
+}
+
+// Wake lock to prevent screen sleep on mobile
+async function requestWakeLock() {
+  if ('wakeLock' in navigator) {
+    try {
+      await navigator.wakeLock.request('screen');
+    } catch(e) {}
+  }
+}
+
+requestWakeLock();
+</script>
+</body>
+</html>
