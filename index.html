@@ -402,6 +402,7 @@ async function checkTickets() {
   if (!monitoring) return;
 
   checkCount++;
+  sessionStorage.setItem('lastCheckTime', Date.now().toString());
   document.getElementById('checkCount').textContent = checkCount;
   addLog('בודק זמינות כרטיסים...');
 
@@ -530,13 +531,44 @@ async function testTelegram() {
 }
 
 // Wake lock to prevent screen sleep on mobile
+let wakeLock = null;
 async function requestWakeLock() {
   if ('wakeLock' in navigator) {
-    try {
-      await navigator.wakeLock.request('screen');
-    } catch(e) {}
+    try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e) {}
   }
 }
+
+// When user returns to the tab - check if timer got frozen
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState === 'visible') {
+    await requestWakeLock();
+    if (monitoring) {
+      const lastCheck = parseInt(sessionStorage.getItem('lastCheckTime') || '0');
+      const secondsSinceLastCheck = (Date.now() - lastCheck) / 1000;
+      if (lastCheck > 0 && secondsSinceLastCheck > INTERVAL + 30) {
+        addLog('⚠️ זוהה קפאון - מפעיל מחדש...');
+        clearTimeout(timer);
+        clearInterval(countdownTimer);
+        checkTickets();
+        startCountdown();
+      }
+    }
+  }
+});
+
+// Heartbeat every 30s - if timer froze, restart automatically
+setInterval(() => {
+  if (!monitoring) return;
+  const lastCheck = parseInt(sessionStorage.getItem('lastCheckTime') || '0');
+  const secondsSinceLastCheck = (Date.now() - lastCheck) / 1000;
+  if (lastCheck > 0 && secondsSinceLastCheck > INTERVAL + 60) {
+    addLog('⚠️ הפעלה מחדש אוטומטית...');
+    clearTimeout(timer);
+    clearInterval(countdownTimer);
+    checkTickets();
+    startCountdown();
+  }
+}, 30000);
 
 requestWakeLock();
 </script>
